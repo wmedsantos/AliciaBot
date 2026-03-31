@@ -1,0 +1,11 @@
+/Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Domain/bin/Debug/net7.0/AlicIA.Domain.deps.json
+/Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Domain/bin/Debug/net7.0/AlicIA.Domain.dll
+/Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Domain/bin/Debug/net7.0/AlicIA.Domain.pdb
+/Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Domain/obj/Debug/net7.0/AlicIA.Domain.GeneratedMSBuildEditorConfig.editorconfig
+/Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Domain/obj/Debug/net7.0/AlicIA.Domain.AssemblyInfoInputs.cache
+/Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Domain/obj/Debug/net7.0/AlicIA.Domain.AssemblyInfo.cs
+/Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Domain/obj/Debug/net7.0/AlicIA.Domain.csproj.CoreCompileInputs.cache
+/Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Domain/obj/Debug/net7.0/AlicIA.Domain.dll
+/Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Domain/obj/Debug/net7.0/refint/AlicIA.Domain.dll
+/Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Domain/obj/Debug/net7.0/AlicIA.Domain.pdb
+/Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Domain/obj/Debug/net7.0/ref/AlicIA.Domain.dll
