@@ -4,38 +4,44 @@
 Build the first vertical slice of AlicIA's core domain.
 
 ## Domain modeling
-- [ ] Create Tenant entity
-- [ ] Create Service entity
-- [ ] Create Customer entity
-- [ ] Create Request entity
-- [ ] Define RequestType enum
-- [ ] Define RequestStatus enum
+- [x] Create Tenant entity
+- [x] Create Service entity
+- [x] Create Customer entity
+- [x] Create Request entity
+- [x] Define RequestType enum
+- [x] Define RequestStatus enum
+- [x] Create CalendarConnection entity
 
 ## Persistence
-- [ ] Add DbSet<Tenant> to DbContext
-- [ ] Add DbSet<Service> to DbContext
-- [ ] Add DbSet<Customer> to DbContext
-- [ ] Add DbSet<Request> to DbContext
-- [ ] Configure basic relationships
-- [ ] Create initial migration
-- [ ] Apply migration to PostgreSQL
+- [x] Add DbSet<Tenant> to DbContext
+- [x] Add DbSet<Service> to DbContext
+- [x] Add DbSet<Customer> to DbContext
+- [x] Add DbSet<Request> to DbContext
+- [x] Add DbSet<CalendarConnection> to DbContext
+- [x] Configure basic relationships
+- [x] Create initial migration
+- [x] Apply migration to PostgreSQL
+- [x] Create calendar connection migration
+- [x] Apply calendar connection migration
 
 ## API endpoints
-- [ ] Create POST /tenants
-- [ ] Create GET /tenants
-- [ ] Create POST /services
-- [ ] Create GET /services
-- [ ] Create POST /customers
-- [ ] Create GET /customers
-- [ ] Create POST /requests
-- [ ] Create GET /requests
+- [X] Create POST /tenants
+- [X] Create GET /tenants
+- [X] Create POST /services
+- [X] Create GET /services
+- [X] Create POST /customers
+- [X] Create GET /customers
+- [X] Create POST /requests
+- [X] Create GET /requests
 
 ## Validation
-- [ ] Validate request creation with valid tenant/service/customer
-- [ ] Validate requests are persisted
-- [ ] Validate requests can be listed
+- [X] Validate request creation with valid tenant/service/customer
+- [X] Validate requests are persisted
+- [X] Validate requests can be listed
 
 ## Docs and commit
-- [ ] Update README with Day 2 progress
-- [ ] Commit all changes
-- [ ] Push to GitHub
+- [x] Update product-definition.md
+- [x] Update architecture-decisions.md
+- [X] Update README with Day 2 progress
+- [X] Commit all changes
+- [X] Push to GitHub

@@ -107,3 +107,4 @@
 /Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Api/obj/Debug/net8.0/AlicIA.Api.pdb
 /Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Api/obj/Debug/net8.0/AlicIA.Api.genruntimeconfig.cache
 /Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Api/obj/Debug/net8.0/ref/AlicIA.Api.dll
+/Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Api/obj/Debug/net8.0/AlicIA.Api.sourcelink.json

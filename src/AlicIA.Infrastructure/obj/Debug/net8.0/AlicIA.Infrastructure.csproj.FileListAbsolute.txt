@@ -15,3 +15,4 @@
 /Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Infrastructure/obj/Debug/net8.0/AlicIA.Infrastructure.pdb
 /Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Infrastructure/obj/Debug/net8.0/AlicIA.Infrastructure.genruntimeconfig.cache
 /Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Infrastructure/obj/Debug/net8.0/ref/AlicIA.Infrastructure.dll
+/Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Infrastructure/obj/Debug/net8.0/AlicIA.Infrastructure.sourcelink.json

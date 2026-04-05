@@ -18,3 +18,23 @@ Build a low-cost, maintainable MVP for conversational booking and request handli
 - n8n
 - Automated billing
 - Microservices
+
+## Google Calendar Integration Decision
+
+### Decision
+Google Calendar integration is part of the MVP.
+
+### Reason
+AlicIA must not only create bookings, but also understand real-world availability and prevent conflicts.
+
+### Capabilities required in MVP
+- Connect tenant calendar using OAuth
+- Read calendar busy slots
+- Suggest next available booking slots
+- Create booking events
+- Update or remove events on reschedule/cancel
+
+### Security model
+- Google application credentials are stored in environment variables
+- Tenant calendar tokens are stored in a separate CalendarConnection entity
+- Tenant domain entities must not contain provider secrets directly

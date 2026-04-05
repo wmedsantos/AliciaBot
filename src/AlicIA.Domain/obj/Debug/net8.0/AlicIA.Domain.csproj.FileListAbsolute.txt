@@ -9,3 +9,4 @@
 /Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Domain/obj/Debug/net8.0/refint/AlicIA.Domain.dll
 /Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Domain/obj/Debug/net8.0/AlicIA.Domain.pdb
 /Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Domain/obj/Debug/net8.0/ref/AlicIA.Domain.dll
+/Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Domain/obj/Debug/net8.0/AlicIA.Domain.sourcelink.json
