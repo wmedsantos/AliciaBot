@@ -3,17 +3,20 @@ using System;
 using AlicIA.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace AlicIA.Infrastructure.Persistence.Migrations
+namespace AlicIA.Infrastructure.Migrations
 {
     [DbContext(typeof(AlicIADbContext))]
-    partial class AlicIADbContextModelSnapshot : ModelSnapshot
+    [Migration("20260407164059_AddExternalEventIdToRequest")]
+    partial class AddExternalEventIdToRequest
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

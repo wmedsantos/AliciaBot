@@ -2,8 +2,10 @@ using AlicIA.Api.Models;
 using AlicIA.Domain.Entities;
 using AlicIA.Domain.Enums;
 using AlicIA.Infrastructure.Persistence;
+using AlicIA.Infrastructure.Integrations;
 using Microsoft.EntityFrameworkCore;
 using AlicIA.Api.Swagger;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +17,7 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Services.AddDbContext<AlicIADbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddHttpClient<GoogleCalendarService>();
 
 var app = builder.Build();
 
@@ -215,6 +218,58 @@ app.MapGet("/requests", async (Guid? tenantId, AlicIADbContext db) =>
     return Results.Ok(requests);
 });
 
+app.MapPost("/requests/{requestId:guid}/sync-google-event", async (
+    Guid requestId,
+    GoogleCalendarService googleCalendarService,
+    AlicIADbContext db,
+    CancellationToken cancellationToken) =>
+{
+    var request = await db.Requests
+        .Include(x => x.Customer)
+        .Include(x => x.Service)
+        .FirstOrDefaultAsync(x => x.Id == requestId, cancellationToken);
+
+    if (request is null)
+        return Results.NotFound(new { error = "Request not found." });
+
+    if (request.ScheduledAt is null)
+        return Results.BadRequest(new { error = "Request does not have a scheduled time." });
+
+    var connection = await db.CalendarConnections
+        .FirstOrDefaultAsync(
+            x => x.TenantId == request.TenantId && x.Provider == "Google" && x.IsActive,
+            cancellationToken);
+
+    if (connection is null)
+        return Results.BadRequest(new { error = "Active Google Calendar connection not found for this tenant." });
+
+    var startUtc = request.ScheduledAt.Value;
+    var endUtc = startUtc.AddMinutes(request.Service!.DurationMinutes);
+
+    var summary = request.Service.Name;
+    var description = $"Customer: {request.Customer!.Name} | Phone: {request.Customer.Phone}";
+
+    var eventId = await googleCalendarService.CreateEventAsync(
+        connection,
+        summary,
+        startUtc,
+        endUtc,
+        description,
+        cancellationToken);
+
+    request.ExternalEventId = eventId;
+    await db.SaveChangesAsync(cancellationToken);
+
+    return Results.Ok(new
+    {
+        message = "Google Calendar event created successfully.",
+        requestId = request.Id,
+        externalEventId = eventId,
+        startUtc,
+        endUtc
+    });
+});
+
 app.MapPost("/business-hours", async (BusinessHoursCreateRequest request, AlicIADbContext db) =>
 {
     if (string.IsNullOrWhiteSpace(request.StartTime) || string.IsNullOrWhiteSpace(request.EndTime))
@@ -367,6 +422,300 @@ app.MapGet("/availability/next-slots", async (
     return Results.Ok(results);
 });
 
+app.MapGet("/oauth/google/start/{tenantId:guid}", (Guid tenantId, IConfiguration config) =>
+{
+    var clientId = config["Google:ClientId"];
+    var redirectUri = config["Google:RedirectUri"];
+
+    var url = "https://accounts.google.com/o/oauth2/v2/auth" +
+        $"?client_id={Uri.EscapeDataString(clientId!)}" +
+        $"&redirect_uri={Uri.EscapeDataString(redirectUri!)}" +
+        $"&response_type=code" +
+        $"&scope={Uri.EscapeDataString("https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email")}" +
+        $"&access_type=offline" +
+        $"&prompt=consent" +
+        $"&state={tenantId}";
+
+    return Results.Redirect(url);
+});
+
+app.MapGet("/oauth/google/callback", async (
+    string code,
+    string state,
+    IConfiguration config,
+    AlicIADbContext db) =>
+{
+    if (!Guid.TryParse(state, out var tenantId))
+        return Results.BadRequest(new { error = "Invalid tenant state." });
+
+    var tenant = await db.Tenants.FirstOrDefaultAsync(x => x.Id == tenantId);
+    if (tenant is null)
+        return Results.BadRequest(new { error = "Tenant not found." });
+
+    var clientId = config["Google:ClientId"];
+    var clientSecret = config["Google:ClientSecret"];
+    var redirectUri = config["Google:RedirectUri"];
+
+    using var http = new HttpClient();
+
+    var tokenResponse = await http.PostAsync(
+        "https://oauth2.googleapis.com/token",
+        new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["code"] = code,
+            ["client_id"] = clientId!,
+            ["client_secret"] = clientSecret!,
+            ["redirect_uri"] = redirectUri!,
+            ["grant_type"] = "authorization_code"
+        }));
+
+    if (!tokenResponse.IsSuccessStatusCode)
+    {
+        var errorContent = await tokenResponse.Content.ReadAsStringAsync();
+        return Results.BadRequest(new { error = "Token exchange failed.", details = errorContent });
+    }
+
+    var tokenContent = await tokenResponse.Content.ReadAsStringAsync();
+    using var tokenDoc = JsonDocument.Parse(tokenContent);
+
+    var accessToken = tokenDoc.RootElement.GetProperty("access_token").GetString();
+    var refreshToken = tokenDoc.RootElement.TryGetProperty("refresh_token", out var refreshTokenElement)
+        ? refreshTokenElement.GetString()
+        : null;
+
+    if (string.IsNullOrWhiteSpace(accessToken))
+        return Results.BadRequest(new { error = "Access token not returned." });
+
+    if (string.IsNullOrWhiteSpace(refreshToken))
+        return Results.BadRequest(new
+        {
+            error = "Refresh token not returned.",
+            hint = "Google may only return refresh_token on first consent. Revoke app access and try again if needed."
+        });
+
+    var userInfoRequest = new HttpRequestMessage(HttpMethod.Get, "https://www.googleapis.com/oauth2/v2/userinfo");
+    userInfoRequest.Headers.Authorization =
+        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+
+    var userInfoResponse = await http.SendAsync(userInfoRequest);
+
+    if (!userInfoResponse.IsSuccessStatusCode)
+    {
+        var errorContent = await userInfoResponse.Content.ReadAsStringAsync();
+        return Results.BadRequest(new { error = "Failed to get Google user info.", details = errorContent });
+    }
+
+    var userInfoContent = await userInfoResponse.Content.ReadAsStringAsync();
+    using var userDoc = JsonDocument.Parse(userInfoContent);
+
+    var email = userDoc.RootElement.GetProperty("email").GetString();
+
+    if (string.IsNullOrWhiteSpace(email))
+        return Results.BadRequest(new { error = "Google account email not returned." });
+
+    var existingConnection = await db.CalendarConnections
+        .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.Provider == "Google" && x.CalendarEmail == email);
+
+    if (existingConnection is null)
+    {
+        var connection = new CalendarConnection
+        {
+            TenantId = tenantId,
+            Provider = "Google",
+            CalendarEmail = email,
+            CalendarId = "primary",
+            RefreshToken = refreshToken,
+            IsActive = true,
+            ConnectedAt = DateTime.UtcNow
+        };
+
+        db.CalendarConnections.Add(connection);
+    }
+    else
+    {
+        existingConnection.RefreshToken = refreshToken;
+        existingConnection.IsActive = true;
+        existingConnection.ConnectedAt = DateTime.UtcNow;
+    }
+
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new
+    {
+        message = "Google Calendar connected successfully.",
+        tenantId,
+        calendarEmail = email
+    });
+});
+
+app.MapGet("/calendar-connections", async (Guid? tenantId, AlicIADbContext db) =>
+{
+    var query = db.CalendarConnections.AsQueryable();
+
+    if (tenantId.HasValue)
+        query = query.Where(x => x.TenantId == tenantId.Value);
+
+    var items = await query
+        .OrderByDescending(x => x.ConnectedAt)
+        .Select(x => new
+        {
+            x.Id,
+            x.TenantId,
+            x.Provider,
+            x.CalendarEmail,
+            x.CalendarId,
+            x.IsActive,
+            x.ConnectedAt
+        })
+        .ToListAsync();
+
+    return Results.Ok(items);
+});
+
+app.MapGet("/google/busy-slots", async (
+    Guid tenantId,
+    GoogleCalendarService googleCalendarService,
+    AlicIADbContext db,
+    CancellationToken cancellationToken) =>
+{
+    var connection = await db.CalendarConnections
+        .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.Provider == "Google" && x.IsActive, cancellationToken);
+
+    if (connection is null)
+        return Results.BadRequest(new { error = "Active Google Calendar connection not found for this tenant." });
+
+    var timeMin = DateTime.UtcNow;
+    var timeMax = DateTime.UtcNow.AddDays(7);
+
+    var busySlots = await googleCalendarService.GetBusySlotsAsync(
+        connection,
+        timeMin,
+        timeMax,
+        cancellationToken);
+
+    return Results.Ok(new
+    {
+        tenantId,
+        calendarEmail = connection.CalendarEmail,
+        timeMin,
+        timeMax,
+        busySlots
+    });
+});
+
+app.MapGet("/availability/google-next-slots", async (
+    Guid tenantId,
+    Guid serviceId,
+    GoogleCalendarService googleCalendarService,
+    AlicIADbContext db,
+    CancellationToken cancellationToken) =>
+{
+    var service = await db.Services
+        .FirstOrDefaultAsync(x => x.Id == serviceId && x.TenantId == tenantId, cancellationToken);
+
+    if (service is null)
+        return Results.BadRequest(new { error = "Service not found for this tenant." });
+
+    var connection = await db.CalendarConnections
+        .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.Provider == "Google" && x.IsActive, cancellationToken);
+
+    if (connection is null)
+        return Results.BadRequest(new { error = "Active Google Calendar connection not found for this tenant." });
+
+    var businessHours = await db.BusinessHours
+        .Where(x => x.TenantId == tenantId && x.IsActive)
+        .ToListAsync(cancellationToken);
+
+    if (!businessHours.Any())
+        return Results.BadRequest(new { error = "Business hours not configured for this tenant." });
+
+    var timeMin = DateTime.UtcNow;
+    var timeMax = DateTime.UtcNow.AddDays(7);
+
+    var googleBusySlots = await googleCalendarService.GetBusySlotsAsync(
+        connection,
+        timeMin,
+        timeMax,
+        cancellationToken);
+
+    var requestBusySlots = await db.Requests
+        .Where(x =>
+            x.TenantId == tenantId &&
+            x.ScheduledAt != null &&
+            x.Status != RequestStatus.Cancelled)
+        .Join(
+            db.Services,
+            request => request.ServiceId,
+            svc => svc.Id,
+            (request, svc) => new AvailableSlot(
+                request.ScheduledAt!.Value,
+                request.ScheduledAt!.Value.AddMinutes(svc.DurationMinutes)))
+        .ToListAsync(cancellationToken);
+
+    var allBusySlots = googleBusySlots
+        .Select(x => new AvailableSlot(x.StartUtc, x.EndUtc))
+        .Concat(requestBusySlots)
+        .OrderBy(x => x.StartUtc)
+        .ToList();
+
+    var slots = new List<AvailableSlot>();
+    var now = DateTime.UtcNow;
+    var stepMinutes = service.DurationMinutes > 0 ? service.DurationMinutes : 30;
+    var duration = service.DurationMinutes;
+
+    for (var day = 0; day < 7; day++)
+    {
+        var currentDate = now.Date.AddDays(day);
+        var dayOfWeek = currentDate.DayOfWeek;
+
+        var dayRules = businessHours
+            .Where(x => x.DayOfWeek == dayOfWeek)
+            .ToList();
+
+        foreach (var rule in dayRules)
+        {
+            var windowStart = currentDate.Add(rule.StartTime);
+            var windowEnd = currentDate.Add(rule.EndTime);
+
+            if (windowEnd <= now)
+                continue;
+
+            var cursor = windowStart < now ? RoundUpToNextStep(now, stepMinutes) : windowStart;
+
+            while (cursor.AddMinutes(duration) <= windowEnd)
+            {
+                var candidateStart = cursor;
+                var candidateEnd = cursor.AddMinutes(duration);
+
+                var overlaps = allBusySlots.Any(b =>
+                    candidateStart < b.EndUtc && candidateEnd > b.StartUtc);
+
+                if (!overlaps)
+                {
+                    slots.Add(new AvailableSlot(candidateStart, candidateEnd));
+                }
+
+                cursor = cursor.AddMinutes(stepMinutes);
+            }
+        }
+    }
+
+    var nextSlots = slots
+        .OrderBy(x => x.StartUtc)
+        .Take(20)
+        .ToList();
+
+    return Results.Ok(new
+    {
+        tenantId,
+        serviceId,
+        serviceName = service.Name,
+        durationMinutes = service.DurationMinutes,
+        totalFound = nextSlots.Count,
+        slots = nextSlots
+    });
+});
+
 app.Run();
 
 static bool IsSlotOccupied(DateTime slotStart, DateTime slotEnd, List<Request> scheduledRequests)
@@ -387,6 +736,24 @@ static bool IsSlotOccupied(DateTime slotStart, DateTime slotEnd, List<Request> s
     }
 
     return false;
+}
+
+static DateTime RoundUpToNextStep(DateTime value, int stepMinutes)
+{
+    var remainder = value.Minute % stepMinutes;
+    var rounded = new DateTime(
+        value.Year,
+        value.Month,
+        value.Day,
+        value.Hour,
+        value.Minute,
+        0,
+        DateTimeKind.Utc);
+
+    if (remainder == 0 && value.Second == 0 && value.Millisecond == 0)
+        return rounded;
+
+    return rounded.AddMinutes(stepMinutes - remainder);
 }
 
 public record CreateTenantRequest(
@@ -419,3 +786,5 @@ public record CreateRequestRequest(
     DateTime? ScheduledAt,
     decimal? TotalAmount
 );
+
+public record AvailableSlot(DateTime StartUtc, DateTime EndUtc);

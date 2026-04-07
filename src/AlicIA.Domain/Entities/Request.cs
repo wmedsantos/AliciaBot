@@ -14,6 +14,7 @@ public class Request
 
     public DateTime? ScheduledAt { get; set; }
     public decimal? TotalAmount { get; set; }
+    public string? ExternalEventId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public Tenant? Tenant { get; set; }

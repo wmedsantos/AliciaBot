@@ -22,6 +22,17 @@ AlicIA is a SaaS product designed to help small businesses automate customer int
 - ✅ Slot calculation excludes already scheduled requests
 - ✅ 15-minute slot granularity with service-aware duration
 
+## Day 4: Google Calendar Integration
+- ✅ Implemented OAuth flow for Google Calendar connection
+- ✅ Created CalendarConnection entity for storing refresh tokens
+- ✅ Implemented GET /oauth/google/start/{tenantId} for OAuth initiation
+- ✅ Implemented GET /oauth/google/callback for token exchange
+- ✅ Implemented GET /google/busy-slots to fetch calendar busy times
+- ✅ Implemented GET /availability/google-next-slots for slots excluding Google events
+- ✅ Implemented POST /requests/{id}/sync-google-event for booking sync
+- ✅ Added ExternalEventId to Request entity for event tracking
+- ✅ Full Google Calendar integration with availability and booking sync
+
 ## Tech Stack
 - **Backend**: ASP.NET Core 8.0
 - **Database**: PostgreSQL (Neon)
@@ -87,6 +98,14 @@ Operating hours per day of week
   - Excludes already scheduled requests
   - 15-minute granularity
 
+### Google Calendar Integration
+- `GET /oauth/google/start/{tenantId}` - Initiate Google OAuth flow
+- `GET /oauth/google/callback` - Handle OAuth callback and store tokens
+- `GET /calendar-connections?tenantId={id}` - List calendar connections
+- `GET /google/busy-slots?tenantId={id}` - Get busy slots from Google Calendar
+- `GET /availability/google-next-slots?tenantId={id}&serviceId={id}` - Available slots excluding Google events
+- `POST /requests/{id}/sync-google-event` - Sync booking to Google Calendar
+
 ## Running Locally
 
 ```bash
@@ -131,8 +150,8 @@ All tables support cascade deletes where appropriate and include UTC timestamps.
 
 ## Next Steps
 
-- Implement Google Calendar sync
 - Add payment processing
 - Build customer-facing UI (Next.js)
 - Add multi-language support
 - WhatsApp integration
+- Implement notification system

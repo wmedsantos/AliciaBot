@@ -68,6 +68,7 @@ public class AlicIADbContext : DbContext
             entity.Property(x => x.Type).IsRequired();
             entity.Property(x => x.Status).IsRequired();
             entity.Property(x => x.TotalAmount).HasPrecision(10, 2);
+            entity.Property(x => x.ExternalEventId).HasMaxLength(200);
 
             entity.HasOne(x => x.Tenant)
                 .WithMany(x => x.Requests)
