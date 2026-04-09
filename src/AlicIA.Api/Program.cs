@@ -716,6 +716,126 @@ app.MapGet("/availability/google-next-slots", async (
     });
 });
 
+            app.MapPost("/bookings", async (
+                CreateBookingRequest request,
+                GoogleCalendarService googleCalendarService,
+                AlicIADbContext db,
+                CancellationToken cancellationToken) =>
+            {
+                if (string.IsNullOrWhiteSpace(request.CustomerName))
+                    return Results.BadRequest(new { error = "CustomerName is required." });
+
+                if (string.IsNullOrWhiteSpace(request.CustomerPhone))
+                    return Results.BadRequest(new { error = "CustomerPhone is required." });
+
+                var tenant = await db.Tenants.FirstOrDefaultAsync(x => x.Id == request.TenantId, cancellationToken);
+                if (tenant is null)
+                    return Results.BadRequest(new { error = "Tenant not found." });
+
+                var service = await db.Services.FirstOrDefaultAsync(x => x.Id == request.ServiceId && x.TenantId == request.TenantId, cancellationToken);
+                if (service is null)
+                    return Results.BadRequest(new { error = "Service not found for this tenant." });
+
+                var scheduledAtUtc = request.ScheduledAt.ToUniversalTime();
+                var scheduledEndUtc = scheduledAtUtc.AddMinutes(service.DurationMinutes);
+
+                var businessHours = await db.BusinessHours
+                    .Where(x => x.TenantId == request.TenantId && x.IsActive && x.DayOfWeek == scheduledAtUtc.DayOfWeek)
+                    .ToListAsync(cancellationToken);
+
+                if (!businessHours.Any())
+                    return Results.BadRequest(new { error = "No active business hours found for the requested day." });
+
+                var validPeriod = businessHours.Any(x => scheduledAtUtc.TimeOfDay >= x.StartTime && scheduledEndUtc.TimeOfDay <= x.EndTime);
+                if (!validPeriod)
+                    return Results.BadRequest(new { error = "Requested slot is outside of business hours." });
+
+                var existingRequests = await db.Requests
+                    .Include(x => x.Service)
+                    .Where(x => x.TenantId == request.TenantId && x.ScheduledAt != null && x.Status != RequestStatus.Cancelled)
+                    .ToListAsync(cancellationToken);
+
+                if (existingRequests.Any(x =>
+                        BookingHelpers.Overlaps(scheduledAtUtc, scheduledEndUtc, x.ScheduledAt!.Value.ToUniversalTime(), x.ScheduledAt.Value.ToUniversalTime().AddMinutes(x.Service?.DurationMinutes ?? 0))))
+                {
+                    return Results.BadRequest(new { error = "Requested slot is already occupied by another booking." });
+                }
+
+                var connection = await db.CalendarConnections
+                    .FirstOrDefaultAsync(x => x.TenantId == request.TenantId && x.Provider == "Google" && x.IsActive, cancellationToken);
+
+                if (connection is null)
+                    return Results.BadRequest(new { error = "Active Google Calendar connection not found for this tenant." });
+
+                var googleBusySlots = await googleCalendarService.GetBusySlotsAsync(connection, scheduledAtUtc, scheduledEndUtc, cancellationToken);
+                if (googleBusySlots.Any(x => BookingHelpers.Overlaps(scheduledAtUtc, scheduledEndUtc, x.StartUtc, x.EndUtc)))
+                {
+                    return Results.BadRequest(new { error = "Requested slot is busy in Google Calendar." });
+                }
+
+                var customerPhone = request.CustomerPhone.Trim();
+                var customer = await db.Customers
+                    .FirstOrDefaultAsync(x => x.TenantId == request.TenantId && x.Phone == customerPhone, cancellationToken);
+
+                if (customer is null)
+                {
+                    customer = new Customer
+                    {
+                        TenantId = request.TenantId,
+                        Name = request.CustomerName.Trim(),
+                        Phone = customerPhone,
+                        Email = request.CustomerEmail?.Trim()
+                    };
+
+                    db.Customers.Add(customer);
+                    await db.SaveChangesAsync(cancellationToken);
+                }
+
+                var bookingRequest = new Request
+                {
+                    TenantId = request.TenantId,
+                    CustomerId = customer.Id,
+                    ServiceId = service.Id,
+                    Type = RequestType.Booking,
+                    Status = RequestStatus.Confirmed,
+                    ScheduledAt = scheduledAtUtc,
+                    TotalAmount = request.TotalAmount ?? service.Price
+                };
+
+                db.Requests.Add(bookingRequest);
+                await db.SaveChangesAsync(cancellationToken);
+
+                try
+                {
+                    var eventId = await googleCalendarService.CreateEventAsync(
+                        connection,
+                        service.Name,
+                        scheduledAtUtc,
+                        scheduledEndUtc,
+                        $"Customer: {customer.Name} | Phone: {customer.Phone}",
+                        cancellationToken);
+
+                    bookingRequest.ExternalEventId = eventId;
+                    await db.SaveChangesAsync(cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    db.Requests.Remove(bookingRequest);
+                    await db.SaveChangesAsync(cancellationToken);
+                    return Results.BadRequest(new { error = "Failed to create Google Calendar event.", details = ex.Message });
+                }
+
+                return Results.Created($"/bookings/{bookingRequest.Id}", new
+                {
+                    status = "confirmed",
+                    service = service.Name,
+                    customer = customer.Name,
+                    scheduledAt = bookingRequest.ScheduledAt,
+                    requestId = bookingRequest.Id,
+                    externalEventId = bookingRequest.ExternalEventId
+                });
+            });
+
 app.Run();
 
 static bool IsSlotOccupied(DateTime slotStart, DateTime slotEnd, List<Request> scheduledRequests)

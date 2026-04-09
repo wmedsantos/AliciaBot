@@ -1,0 +1,470 @@
+{
+  "info": {
+    "name": "AlicIA API - Full Booking Flow",
+    "description": "Complete API collection for testing the AlicIA booking system with Google Calendar integration",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health & Setup",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Database Connection Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/db-check",
+              "host": ["{{baseUrl}}"],
+              "path": ["db-check"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tenants",
+      "item": [
+        {
+          "name": "Create Tenant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Amanda Beleza\",\n  \"segment\": \"Beauty\",\n  \"plan\": \"Pro\",\n  \"status\": \"Active\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tenants",
+              "host": ["{{baseUrl}}"],
+              "path": ["tenants"]
+            }
+          }
+        },
+        {
+          "name": "List Tenants",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tenants",
+              "host": ["{{baseUrl}}"],
+              "path": ["tenants"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Services",
+      "item": [
+        {
+          "name": "Create Service",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"name\": \"Alongamento de Cílios\",\n  \"durationMinutes\": 60,\n  \"price\": 150.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/services",
+              "host": ["{{baseUrl}}"],
+              "path": ["services"]
+            }
+          }
+        },
+        {
+          "name": "List Services",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/services?tenantId={{tenantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["services"],
+              "query": [
+                {
+                  "key": "tenantId",
+                  "value": "{{tenantId}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customers",
+      "item": [
+        {
+          "name": "Create Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"name\": \"Maria Silva\",\n  \"phone\": \"21999999999\",\n  \"email\": \"maria@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers"]
+            }
+          }
+        },
+        {
+          "name": "List Customers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/customers?tenantId={{tenantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers"],
+              "query": [
+                {
+                  "key": "tenantId",
+                  "value": "{{tenantId}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Business Hours",
+      "item": [
+        {
+          "name": "Set Business Hours - Monday",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"dayOfWeek\": 1,\n  \"startTime\": \"09:00:00\",\n  \"endTime\": \"18:00:00\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/business-hours",
+              "host": ["{{baseUrl}}"],
+              "path": ["business-hours"]
+            }
+          }
+        },
+        {
+          "name": "Set Business Hours - Saturday",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"dayOfWeek\": 6,\n  \"startTime\": \"09:00:00\",\n  \"endTime\": \"13:00:00\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/business-hours",
+              "host": ["{{baseUrl}}"],
+              "path": ["business-hours"]
+            }
+          }
+        },
+        {
+          "name": "Get Business Hours",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/business-hours?tenantId={{tenantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["business-hours"],
+              "query": [
+                {
+                  "key": "tenantId",
+                  "value": "{{tenantId}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Google Calendar Integration",
+      "item": [
+        {
+          "name": "Start OAuth Flow",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/oauth/google/start/{{tenantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["oauth", "google", "start", "{{tenantId}}"]
+            }
+          }
+        },
+        {
+          "name": "OAuth Callback (Manual - Copy redirect)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/oauth/google/callback?code=PASTE_CODE_HERE&state={{tenantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["oauth", "google", "callback"],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "PASTE_CODE_HERE"
+                },
+                {
+                  "key": "state",
+                  "value": "{{tenantId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Calendar Connections",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/calendar-connections?tenantId={{tenantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["calendar-connections"],
+              "query": [
+                {
+                  "key": "tenantId",
+                  "value": "{{tenantId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Google Busy Slots",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/google/busy-slots?tenantId={{tenantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["google", "busy-slots"],
+              "query": [
+                {
+                  "key": "tenantId",
+                  "value": "{{tenantId}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Availability",
+      "item": [
+        {
+          "name": "Get Next Available Slots",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/availability/next-slots?tenantId={{tenantId}}&serviceId={{serviceId}}&days=7&maxSlots=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["availability", "next-slots"],
+              "query": [
+                {
+                  "key": "tenantId",
+                  "value": "{{tenantId}}"
+                },
+                {
+                  "key": "serviceId",
+                  "value": "{{serviceId}}"
+                },
+                {
+                  "key": "days",
+                  "value": "7"
+                },
+                {
+                  "key": "maxSlots",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Google Calendar Next Slots",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/availability/google-next-slots?tenantId={{tenantId}}&serviceId={{serviceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["availability", "google-next-slots"],
+              "query": [
+                {
+                  "key": "tenantId",
+                  "value": "{{tenantId}}"
+                },
+                {
+                  "key": "serviceId",
+                  "value": "{{serviceId}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Requests",
+      "item": [
+        {
+          "name": "Create Request (Manual)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"customerId\": \"{{customerId}}\",\n  \"serviceId\": \"{{serviceId}}\",\n  \"type\": \"Booking\",\n  \"status\": \"Confirmed\",\n  \"scheduledAt\": \"2026-04-12T10:00:00Z\",\n  \"totalAmount\": 150.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/requests",
+              "host": ["{{baseUrl}}"],
+              "path": ["requests"]
+            }
+          }
+        },
+        {
+          "name": "List Requests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/requests?tenantId={{tenantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["requests"],
+              "query": [
+                {
+                  "key": "tenantId",
+                  "value": "{{tenantId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sync Request to Google Calendar",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/requests/{{requestId}}/sync-google-event",
+              "host": ["{{baseUrl}}"],
+              "path": ["requests", "{{requestId}}", "sync-google-event"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "★ Full Booking Flow (Day 5)",
+      "item": [
+        {
+          "name": "Complete Booking with Google Sync",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"serviceId\": \"{{serviceId}}\",\n  \"customerName\": \"Maria Silva\",\n  \"customerPhone\": \"21999999999\",\n  \"scheduledAt\": \"2026-04-12T10:00:00Z\",\n  \"customerEmail\": \"maria@example.com\",\n  \"totalAmount\": 150.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "tenantId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "serviceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "requestId",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

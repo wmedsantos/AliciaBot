@@ -37,6 +37,6 @@ Integrate AlicIA with Google Calendar.
 - [X] Validate event is created in calendar
 
 ## Docs and commit
-- [ ] Update README
-- [ ] Commit changes
-- [ ] Push to GitHub
+- [X] Update README
+- [X] Commit changes
+- [X] Push to GitHub

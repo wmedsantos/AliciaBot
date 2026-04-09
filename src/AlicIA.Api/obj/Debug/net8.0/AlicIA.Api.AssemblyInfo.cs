@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AlicIA.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0ae0903005865c2091d74faa4a7cfa45beac9122")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2300d9f0435670b24c30cb1247487bfcbba4de95")]
 [assembly: System.Reflection.AssemblyProductAttribute("AlicIA.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AlicIA.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
