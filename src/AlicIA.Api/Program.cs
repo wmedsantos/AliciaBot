@@ -3,9 +3,13 @@ using AlicIA.Domain.Entities;
 using AlicIA.Domain.Enums;
 using AlicIA.Infrastructure.Persistence;
 using AlicIA.Infrastructure.Integrations;
+using AlicIA.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
 using AlicIA.Api.Swagger;
 using System.Text.Json;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,10 +23,44 @@ builder.Services.AddDbContext<AlicIADbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddHttpClient<GoogleCalendarService>();
 
+// Add security services
+builder.Services.AddScoped<IJwtAuthService, JwtAuthService>();
+builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+
+// Configure JWT authentication
+var jwtSecret = builder.Configuration["Jwt:Secret"] ?? throw new InvalidOperationException("JWT Secret not configured");
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "AlicIA";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "AlicIA";
+
+if (string.IsNullOrWhiteSpace(jwtSecret) || jwtSecret.Length < 32)
+    throw new InvalidOperationException("JWT Secret must be at least 32 characters long");
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+            ValidateIssuer = true,
+            ValidIssuer = jwtIssuer,
+            ValidateAudience = true,
+            ValidAudience = jwtAudience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
 app.UseSwagger();
 app.UseSwaggerUI();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok(new
 {
@@ -42,6 +80,102 @@ app.MapGet("/db-check", async (AlicIADbContext db) =>
         utc = DateTime.UtcNow
     });
 });
+
+// Authentication endpoints (public)
+app.MapPost("/api/auth/login", async (
+    LoginRequest request,
+    IPasswordHasher passwordHasher,
+    IJwtAuthService jwtService,
+    AlicIADbContext db) =>
+{
+    if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+        return Results.BadRequest(new { error = "Email and password are required." });
+
+    var user = await db.Users.FirstOrDefaultAsync(x => 
+        x.TenantId == request.TenantId && x.Email == request.Email.ToLowerInvariant());
+
+    if (user is null || !passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
+        return Results.Unauthorized();
+
+    var token = jwtService.GenerateToken(user.Id, user.Email, user.TenantId, user.Role);
+    var expiresAt = DateTime.UtcNow.AddMinutes(1440); // Configurable
+
+    return Results.Ok(new LoginResponse(
+        Token: token,
+        Email: user.Email,
+        TenantId: user.TenantId,
+        Role: user.Role,
+        ExpiresAt: expiresAt
+    ));
+}).WithName("Login").WithOpenApi();
+
+app.MapPost("/api/auth/signup", async (
+    CreateUserRequest request,
+    IPasswordHasher passwordHasher,
+    IJwtAuthService jwtService,
+    AlicIADbContext db) =>
+{
+    if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+        return Results.BadRequest(new { error = "Email and password are required." });
+
+    if (request.Password.Length < 8)
+        return Results.BadRequest(new { error = "Password must be at least 8 characters." });
+
+    var tenant = await db.Tenants.FirstOrDefaultAsync(x => x.Id == request.TenantId);
+    if (tenant is null)
+        return Results.NotFound(new { error = "Tenant not found." });
+
+    var existingUser = await db.Users.FirstOrDefaultAsync(x =>
+        x.TenantId == request.TenantId && x.Email == request.Email.ToLowerInvariant());
+
+    if (existingUser is not null)
+        return Results.BadRequest(new { error = "User already exists for this tenant." });
+
+    var user = new User
+    {
+        TenantId = request.TenantId,
+        Email = request.Email.ToLowerInvariant(),
+        PasswordHash = passwordHasher.HashPassword(request.Password),
+        Role = request.Role
+    };
+
+    db.Users.Add(user);
+    await db.SaveChangesAsync();
+
+    var token = jwtService.GenerateToken(user.Id, user.Email, user.TenantId, user.Role);
+    var expiresAt = DateTime.UtcNow.AddMinutes(1440);
+
+    return Results.Created($"/api/users/{user.Id}", new LoginResponse(
+        Token: token,
+        Email: user.Email,
+        TenantId: user.TenantId,
+        Role: user.Role,
+        ExpiresAt: expiresAt
+    ));
+}).WithName("Signup").WithOpenApi();
+
+// Protected endpoint - Get current user info
+app.MapGet("/api/me", async (HttpContext httpContext, AlicIADbContext db) =>
+{
+    var userIdClaim = httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    var tenantIdClaim = httpContext.User.FindFirst("tenantId")?.Value;
+
+    if (!Guid.TryParse(userIdClaim, out var userId) || !Guid.TryParse(tenantIdClaim, out var tenantId))
+        return Results.Unauthorized();
+
+    var user = await db.Users.FirstOrDefaultAsync(x => x.Id == userId && x.TenantId == tenantId);
+    if (user is null)
+        return Results.NotFound();
+
+    return Results.Ok(new
+    {
+        user.Id,
+        user.Email,
+        user.TenantId,
+        user.Role,
+        user.CreatedAt
+    });
+}).RequireAuthorization().WithName("GetCurrentUser").WithOpenApi();
 
 app.MapPost("/tenants", async (CreateTenantRequest request, AlicIADbContext db) =>
 {

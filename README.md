@@ -33,10 +33,30 @@ AlicIA is a SaaS product designed to help small businesses automate customer int
 - ✅ Added ExternalEventId to Request entity for event tracking
 - ✅ Full Google Calendar integration with availability and booking sync
 
+## Day 5: Full Booking Flow
+- ✅ Implemented POST /bookings endpoint for unified booking
+- ✅ Automatic customer creation/reuse based on phone number
+- ✅ Atomic booking with Google Calendar sync
+- ✅ Prevents double booking with multi-source conflict detection
+- ✅ Returns confirmation with request and event IDs
+
+## Day 6: Security Baseline (JWT + Public/Private API)
+- ✅ Created User entity with password hashing (PBKDF2-SHA256)
+- ✅ Implemented JwtAuthService for token generation and validation
+- ✅ Added POST /api/auth/login endpoint
+- ✅ Added POST /api/auth/signup endpoint  
+- ✅ Added GET /api/me protected endpoint (requires JWT)
+- ✅ Configured JWT Bearer authentication middleware
+- ✅ Implemented PasswordHasher with 10,000 iterations + salt
+- ✅ Database migration creates users table with unique email constraint
+- ✅ Tenant isolation enforced through JWT claims
+- ✅ All security configuration externalized to appsettings
+
 ## Tech Stack
 - **Backend**: ASP.NET Core 8.0
 - **Database**: PostgreSQL (Neon)
 - **ORM**: Entity Framework Core 8.0
+- **Security**: JWT (HS256), PBKDF2-SHA256
 - **API Style**: REST with minimal abstractions
 
 ## Core Entities
@@ -44,7 +64,13 @@ AlicIA is a SaaS product designed to help small businesses automate customer int
 ### Tenant
 Business account using AlicIA
 - Name, Segment, Plan, Status
-- Collections: Services, Customers, Requests, BusinessHours, CalendarConnections
+- Collections: Services, Customers, Requests, BusinessHours, CalendarConnections, Users
+
+### User
+Business owner managing a tenant
+- Email, PasswordHash, Role, TenantId
+- Unique email per tenant
+- Used for authentication and authorization
 
 ### Service
 Service offered by a tenant
@@ -62,6 +88,7 @@ Structured booking request
 - Status tracking (Pending → Completed)
 - ScheduledAt timestamp
 - TotalAmount
+- ExternalEventId for Google Calendar sync
 
 ### BusinessHours
 Operating hours per day of week
@@ -70,6 +97,13 @@ Operating hours per day of week
 - Enables availability calculations
 
 ## API Endpoints
+
+### Authentication (Public)
+- `POST /api/auth/signup` - Create new user account
+- `POST /api/auth/login` - Login with email and password (returns JWT)
+
+### Protected Endpoints (Require JWT)
+- `GET /api/me` - Get current user info
 
 ### Tenants
 - `POST /tenants` - Create tenant
@@ -86,6 +120,9 @@ Operating hours per day of week
 ### Requests
 - `POST /requests` - Create booking request
 - `GET /requests?tenantId={id}` - List requests
+
+### Bookings
+- `POST /bookings` - Create booking with automatic sync to Google Calendar
 
 ### Business Hours
 - `POST /business-hours` - Set tenant operating hours
@@ -105,6 +142,57 @@ Operating hours per day of week
 - `GET /google/busy-slots?tenantId={id}` - Get busy slots from Google Calendar
 - `GET /availability/google-next-slots?tenantId={id}&serviceId={id}` - Available slots excluding Google events
 - `POST /requests/{id}/sync-google-event` - Sync booking to Google Calendar
+
+## Authentication
+
+### JWT Token Format
+```json
+{
+  "sub": "user-id",
+  "email": "user@example.com",
+  "tenantId": "tenant-id",
+  "role": "Owner",
+  "exp": 1234567890
+}
+```
+
+### Configuration
+```json
+{
+  "Jwt": {
+    "Secret": "minimum-32-characters-for-production",
+    "Issuer": "AlicIA",
+    "Audience": "AlicIA",
+    "ExpirationMinutes": 1440
+  }
+}
+```
+
+### Usage
+```bash
+# Signup
+curl -X POST http://localhost:5000/api/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tenantId": "tenant-id",
+    "email": "user@example.com",
+    "password": "secure-password",
+    "role": "Owner"
+  }'
+
+# Login
+curl -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tenantId": "tenant-id",
+    "email": "user@example.com",
+    "password": "secure-password"
+  }'
+
+# Protected request
+curl -X GET http://localhost:5000/api/me \
+  -H "Authorization: Bearer {token}"
+```
 
 ## Running Locally
 
@@ -132,14 +220,16 @@ src/
     Enums/
   AlicIA.Infrastructure/  # Database & persistence
     Persistence/Migrations/
+    Security/             # JWT & Password services
+    Integrations/         # Google Calendar integration
   AlicIA.Api/             # REST API & endpoints
-    Controllers/
     Models/
 ```
 
 ## Database Schema
 
 - `tenants` - Business accounts
+- `users` - User accounts per tenant
 - `services` - Service catalog
 - `customers` - Customer records
 - `requests` - Booking requests
@@ -148,10 +238,22 @@ src/
 
 All tables support cascade deletes where appropriate and include UTC timestamps.
 
+## Security
+
+- **Password Hashing**: PBKDF2-SHA256 with 10,000 iterations + random salt
+- **JWT Tokens**: HS256 signature with 24-hour expiration
+- **Tenant Isolation**: Claims-based filtering prevents data leakage
+- **Authorization**: Bearer token validation on protected endpoints
+
 ## Next Steps
 
-- Add payment processing
+- Implement public API endpoints (/public/{slug}/services, /availability, /bookings)
+- Add authorization policies for different roles
+- Implement refresh tokens
+- Add rate limiting to auth endpoints
 - Build customer-facing UI (Next.js)
 - Add multi-language support
 - WhatsApp integration
 - Implement notification system
+- Payment processing
+

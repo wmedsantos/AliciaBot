@@ -1,10 +1,74 @@
 {
   "info": {
-    "name": "AlicIA API - Full Booking Flow",
-    "description": "Complete API collection for testing the AlicIA booking system with Google Calendar integration",
+    "name": "AlicIA API - Full Booking Flow with Authentication",
+    "description": "Complete API collection for testing the AlicIA booking system with JWT authentication, Google Calendar integration, and full booking flow",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
+    {
+      "name": "★ Day 6: Authentication (JWT)",
+      "item": [
+        {
+          "name": "Sign Up (Create User Account)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"email\": \"amanda@beleza.com\",\n  \"password\": \"SecurePassword123\",\n  \"role\": \"Owner\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "signup"]
+            }
+          }
+        },
+        {
+          "name": "Login (Get JWT Token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"email\": \"amanda@beleza.com\",\n  \"password\": \"SecurePassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Current User (Protected - Requires JWT)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me"]
+            }
+          }
+        }
+      ]
+    },
     {
       "name": "Health & Setup",
       "item": [
@@ -463,6 +527,11 @@
     },
     {
       "key": "requestId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "jwtToken",
       "value": "",
       "type": "string"
     }

@@ -108,3 +108,11 @@
 /Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Api/obj/Debug/net8.0/AlicIA.Api.genruntimeconfig.cache
 /Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Api/obj/Debug/net8.0/ref/AlicIA.Api.dll
 /Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Api/obj/Debug/net8.0/AlicIA.Api.sourcelink.json
+/Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Api/bin/Debug/net8.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll
+/Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Api/bin/Debug/net8.0/Microsoft.IdentityModel.Abstractions.dll
+/Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Api/bin/Debug/net8.0/Microsoft.IdentityModel.JsonWebTokens.dll
+/Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Api/bin/Debug/net8.0/Microsoft.IdentityModel.Logging.dll
+/Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Api/bin/Debug/net8.0/Microsoft.IdentityModel.Protocols.dll
+/Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Api/bin/Debug/net8.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+/Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Api/bin/Debug/net8.0/Microsoft.IdentityModel.Tokens.dll
+/Users/wmedeiros/Projects/AyaX/AliciaBot/AliciaBot/src/AlicIA.Api/bin/Debug/net8.0/System.IdentityModel.Tokens.Jwt.dll

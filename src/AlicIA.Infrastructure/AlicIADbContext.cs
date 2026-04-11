@@ -10,6 +10,7 @@ public class AlicIADbContext : DbContext
     }
 
     public DbSet<Tenant> Tenants => Set<Tenant>();
+    public DbSet<User> Users => Set<User>();
     public DbSet<Service> Services => Set<Service>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Request> Requests => Set<Request>();
@@ -29,6 +30,23 @@ public class AlicIADbContext : DbContext
             entity.Property(x => x.Segment).IsRequired().HasMaxLength(100);
             entity.Property(x => x.Plan).IsRequired().HasMaxLength(50);
             entity.Property(x => x.Status).IsRequired().HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.ToTable("users");
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.Email).IsRequired().HasMaxLength(200);
+            entity.Property(x => x.PasswordHash).IsRequired();
+            entity.Property(x => x.Role).IsRequired().HasMaxLength(50);
+
+            entity.HasOne(x => x.Tenant)
+                .WithMany()
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(x => new { x.TenantId, x.Email }).IsUnique();
         });
 
         modelBuilder.Entity<Service>(entity =>
