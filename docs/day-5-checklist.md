@@ -16,96 +16,96 @@ By Day 4, AlicIA can:
 - [x] Connect to Google Calendar via OAuth
 - [x] Create Google Calendar events manually
 
-Missing:
+Implemented:
 
-- [ ] Unified booking flow
-- [ ] Automatic customer handling
-- [ ] Atomic booking + calendar sync
+- [x] Unified booking flow
+- [x] Automatic customer handling
+- [x] Atomic booking + calendar sync
 
 ---
 
 ## Booking Endpoint
 
-- [ ] Create POST /bookings endpoint
-- [ ] Define request model:
-  - [ ] tenantId
-  - [ ] serviceId
-  - [ ] customerName
-  - [ ] customerPhone
-  - [ ] scheduledAt
+- [x] Create POST /bookings endpoint
+- [x] Define request model:
+  - [x] tenantId
+  - [x] serviceId
+  - [x] customerName
+  - [x] customerPhone
+  - [x] scheduledAt
 
 ---
 
 ## Validation
 
-- [ ] Validate tenant exists
-- [ ] Validate service belongs to tenant
-- [ ] Validate scheduledAt is not null
-- [ ] Validate slot is still available:
-  - [ ] Check BusinessHours
-  - [ ] Check Google busy slots
-  - [ ] Check existing Requests
+- [x] Validate tenant exists
+- [x] Validate service belongs to tenant
+- [x] Validate scheduledAt is not null
+- [x] Validate slot is still available:
+  - [x] Check BusinessHours
+  - [x] Check Google busy slots
+  - [x] Check existing Requests
 
 ---
 
 ## Customer Handling
 
-- [ ] Search customer by:
-  - [ ] tenantId
-  - [ ] phone
-- [ ] If exists:
-  - [ ] reuse existing customer
-- [ ] If not:
-  - [ ] create new customer
+- [x] Search customer by:
+  - [x] tenantId
+  - [x] phone
+- [x] If exists:
+  - [x] reuse existing customer
+- [x] If not:
+  - [x] create new customer
 
 ---
 
 ## Request Creation
 
-- [ ] Create Request with:
-  - [ ] Type = Booking
-  - [ ] Status = Confirmed
-  - [ ] ScheduledAt
-  - [ ] TotalAmount
-- [ ] Persist request
+- [x] Create Request with:
+  - [x] Type = Booking
+  - [x] Status = Confirmed
+  - [x] ScheduledAt
+  - [x] TotalAmount
+- [x] Persist request
 
 ---
 
 ## Google Calendar Sync
 
-- [ ] Retrieve CalendarConnection
-- [ ] Call GoogleCalendarService.CreateEventAsync
-- [ ] Pass:
-  - [ ] service name
-  - [ ] customer name
-  - [ ] start time
-  - [ ] end time
-- [ ] Receive eventId
-- [ ] Store ExternalEventId in Request
+- [x] Retrieve CalendarConnection
+- [x] Call GoogleCalendarService.CreateEventAsync
+- [x] Pass:
+  - [x] service name
+  - [x] customer name
+  - [x] start time
+  - [x] end time
+- [x] Receive eventId
+- [x] Store ExternalEventId in Request
 
 ---
 
 ## Response
 
-- [ ] Return response:
-  - [ ] status = confirmed
-  - [ ] service name
-  - [ ] customer name
-  - [ ] scheduledAt
+- [x] Return response:
+  - [x] status = confirmed
+  - [x] service name
+  - [x] customer name
+  - [x] scheduledAt
 
 ---
 
 ## Validation (End-to-End)
 
-- [ ] Booking creates Request in DB
-- [ ] Booking creates event in Google Calendar
-- [ ] ExternalEventId is persisted
-- [ ] Double booking is prevented
+- [x] Booking creates Request in DB
+- [x] Booking creates event in Google Calendar
+- [x] ExternalEventId is persisted
+- [x] Double booking is prevented
 
 ---
 
 ## Docs and commit
 
-- [ ] Update README with Day 5 progress
+- [x] Update README with Day 5 progress
 - [ ] Commit all changes
 - [ ] Push to GitHub

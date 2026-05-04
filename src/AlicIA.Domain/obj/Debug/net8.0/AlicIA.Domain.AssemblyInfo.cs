@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AlicIA.Domain")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e9211d781331252a9c2101969c5eda3ac612e3b8")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+693a7f9aa8d5f06635813b8a3e6db7d46f108bc5")]
 [assembly: System.Reflection.AssemblyProductAttribute("AlicIA.Domain")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AlicIA.Domain")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

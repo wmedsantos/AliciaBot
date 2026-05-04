@@ -1,13 +1,13 @@
 namespace AlicIA.Api.Models;
 
 public record CreateBookingRequest(
-    Guid TenantId,
     Guid ServiceId,
     string CustomerName,
     string CustomerPhone,
     DateTime ScheduledAt,
     string? CustomerEmail = null,
-    decimal? TotalAmount = null
+    decimal? TotalAmount = null,
+    Guid? TenantId = null
 );
 
 public static class BookingHelpers

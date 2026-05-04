@@ -10,6 +10,8 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Security.Claims;
+using System.Text.RegularExpressions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -179,9 +181,18 @@ app.MapGet("/api/me", async (HttpContext httpContext, AlicIADbContext db) =>
 
 app.MapPost("/tenants", async (CreateTenantRequest request, AlicIADbContext db) =>
 {
+    var slug = NormalizeSlug(request.Slug ?? request.Name);
+    if (string.IsNullOrWhiteSpace(slug))
+        return Results.BadRequest(new { error = "Tenant slug could not be generated." });
+
+    var slugExists = await db.Tenants.AnyAsync(x => x.Slug == slug);
+    if (slugExists)
+        return Results.BadRequest(new { error = "Tenant slug already exists." });
+
     var tenant = new Tenant
     {
         Name = request.Name,
+        Slug = slug,
         Segment = request.Segment,
         Plan = request.Plan,
         Status = request.Status
@@ -193,24 +204,33 @@ app.MapPost("/tenants", async (CreateTenantRequest request, AlicIADbContext db) 
     return Results.Created($"/tenants/{tenant.Id}", tenant);
 });
 
-app.MapGet("/tenants", async (AlicIADbContext db) =>
+app.MapGet("/api/tenants", async (HttpContext httpContext, AlicIADbContext db) =>
 {
+    var tenantId = GetTenantIdFromClaims(httpContext);
+    if (tenantId is null)
+        return Results.Unauthorized();
+
     var tenants = await db.Tenants
+        .Where(x => x.Id == tenantId.Value)
         .OrderBy(x => x.Name)
         .ToListAsync();
 
     return Results.Ok(tenants);
-});
+}).RequireAuthorization();
 
-app.MapPost("/services", async (CreateServiceRequest request, AlicIADbContext db) =>
+app.MapPost("/api/services", async (CreateServiceRequest request, HttpContext httpContext, AlicIADbContext db) =>
 {
-    var tenantExists = await db.Tenants.AnyAsync(x => x.Id == request.TenantId);
+    var tenantId = GetTenantIdFromClaims(httpContext);
+    if (tenantId is null)
+        return Results.Unauthorized();
+
+    var tenantExists = await db.Tenants.AnyAsync(x => x.Id == tenantId.Value);
     if (!tenantExists)
         return Results.BadRequest(new { error = "Tenant not found." });
 
     var service = new Service
     {
-        TenantId = request.TenantId,
+        TenantId = tenantId.Value,
         Name = request.Name,
         DurationMinutes = request.DurationMinutes,
         Price = request.Price
@@ -220,31 +240,35 @@ app.MapPost("/services", async (CreateServiceRequest request, AlicIADbContext db
     await db.SaveChangesAsync();
 
     return Results.Created($"/services/{service.Id}", service);
-});
+}).RequireAuthorization();
 
-app.MapGet("/services", async (Guid? tenantId, AlicIADbContext db) =>
+app.MapGet("/api/services", async (HttpContext httpContext, AlicIADbContext db) =>
 {
-    var query = db.Services.AsQueryable();
+    var tenantId = GetTenantIdFromClaims(httpContext);
+    if (tenantId is null)
+        return Results.Unauthorized();
 
-    if (tenantId.HasValue)
-        query = query.Where(x => x.TenantId == tenantId.Value);
-
-    var services = await query
+    var services = await db.Services
+        .Where(x => x.TenantId == tenantId.Value)
         .OrderBy(x => x.Name)
         .ToListAsync();
 
     return Results.Ok(services);
-});
+}).RequireAuthorization();
 
-app.MapPost("/customers", async (CreateCustomerRequest request, AlicIADbContext db) =>
+app.MapPost("/api/customers", async (CreateCustomerRequest request, HttpContext httpContext, AlicIADbContext db) =>
 {
-    var tenantExists = await db.Tenants.AnyAsync(x => x.Id == request.TenantId);
+    var tenantId = GetTenantIdFromClaims(httpContext);
+    if (tenantId is null)
+        return Results.Unauthorized();
+
+    var tenantExists = await db.Tenants.AnyAsync(x => x.Id == tenantId.Value);
     if (!tenantExists)
         return Results.BadRequest(new { error = "Tenant not found." });
 
     var customer = new Customer
     {
-        TenantId = request.TenantId,
+        TenantId = tenantId.Value,
         Name = request.Name,
         Phone = request.Phone,
         Email = request.Email
@@ -254,43 +278,47 @@ app.MapPost("/customers", async (CreateCustomerRequest request, AlicIADbContext 
     await db.SaveChangesAsync();
 
     return Results.Created($"/customers/{customer.Id}", customer);
-});
+}).RequireAuthorization();
 
-app.MapGet("/customers", async (Guid? tenantId, AlicIADbContext db) =>
+app.MapGet("/api/customers", async (HttpContext httpContext, AlicIADbContext db) =>
 {
-    var query = db.Customers.AsQueryable();
+    var tenantId = GetTenantIdFromClaims(httpContext);
+    if (tenantId is null)
+        return Results.Unauthorized();
 
-    if (tenantId.HasValue)
-        query = query.Where(x => x.TenantId == tenantId.Value);
-
-    var customers = await query
+    var customers = await db.Customers
+        .Where(x => x.TenantId == tenantId.Value)
         .OrderBy(x => x.Name)
         .ToListAsync();
 
     return Results.Ok(customers);
-});
+}).RequireAuthorization();
 
-app.MapPost("/requests", async (CreateRequestRequest request, AlicIADbContext db) =>
+app.MapPost("/api/requests", async (CreateRequestRequest request, HttpContext httpContext, AlicIADbContext db) =>
 {
-    var tenant = await db.Tenants.FirstOrDefaultAsync(x => x.Id == request.TenantId);
+    var tenantId = GetTenantIdFromClaims(httpContext);
+    if (tenantId is null)
+        return Results.Unauthorized();
+
+    var tenant = await db.Tenants.FirstOrDefaultAsync(x => x.Id == tenantId.Value);
     if (tenant is null)
         return Results.BadRequest(new { error = "Tenant not found." });
 
     var customer = await db.Customers
-        .FirstOrDefaultAsync(x => x.Id == request.CustomerId && x.TenantId == request.TenantId);
+        .FirstOrDefaultAsync(x => x.Id == request.CustomerId && x.TenantId == tenantId.Value);
 
     if (customer is null)
         return Results.BadRequest(new { error = "Customer not found for this tenant." });
 
     var service = await db.Services
-        .FirstOrDefaultAsync(x => x.Id == request.ServiceId && x.TenantId == request.TenantId);
+        .FirstOrDefaultAsync(x => x.Id == request.ServiceId && x.TenantId == tenantId.Value);
 
     if (service is null)
         return Results.BadRequest(new { error = "Service not found for this tenant." });
 
     var entity = new Request
     {
-        TenantId = request.TenantId,
+        TenantId = tenantId.Value,
         CustomerId = request.CustomerId,
         ServiceId = request.ServiceId,
         Type = request.Type,
@@ -317,20 +345,19 @@ app.MapPost("/requests", async (CreateRequestRequest request, AlicIADbContext db
         entity.TotalAmount,
         entity.CreatedAt
     });
-});
+}).RequireAuthorization();
 
-app.MapGet("/requests", async (Guid? tenantId, AlicIADbContext db) =>
+app.MapGet("/api/requests", async (HttpContext httpContext, AlicIADbContext db) =>
 {
-    var query = db.Requests
+    var tenantId = GetTenantIdFromClaims(httpContext);
+    if (tenantId is null)
+        return Results.Unauthorized();
+
+    var requests = await db.Requests
         .Include(x => x.Tenant)
         .Include(x => x.Customer)
         .Include(x => x.Service)
-        .AsQueryable();
-
-    if (tenantId.HasValue)
-        query = query.Where(x => x.TenantId == tenantId.Value);
-
-    var requests = await query
+        .Where(x => x.TenantId == tenantId.Value)
         .OrderByDescending(x => x.CreatedAt)
         .Select(x => new
         {
@@ -350,18 +377,23 @@ app.MapGet("/requests", async (Guid? tenantId, AlicIADbContext db) =>
         .ToListAsync();
 
     return Results.Ok(requests);
-});
+}).RequireAuthorization();
 
-app.MapPost("/requests/{requestId:guid}/sync-google-event", async (
+app.MapPost("/api/requests/{requestId:guid}/sync-google-event", async (
     Guid requestId,
+    HttpContext httpContext,
     GoogleCalendarService googleCalendarService,
     AlicIADbContext db,
     CancellationToken cancellationToken) =>
 {
+    var tenantId = GetTenantIdFromClaims(httpContext);
+    if (tenantId is null)
+        return Results.Unauthorized();
+
     var request = await db.Requests
         .Include(x => x.Customer)
         .Include(x => x.Service)
-        .FirstOrDefaultAsync(x => x.Id == requestId, cancellationToken);
+        .FirstOrDefaultAsync(x => x.Id == requestId && x.TenantId == tenantId.Value, cancellationToken);
 
     if (request is null)
         return Results.NotFound(new { error = "Request not found." });
@@ -402,10 +434,14 @@ app.MapPost("/requests/{requestId:guid}/sync-google-event", async (
         startUtc,
         endUtc
     });
-});
+}).RequireAuthorization();
 
-app.MapPost("/business-hours", async (BusinessHoursCreateRequest request, AlicIADbContext db) =>
+app.MapPost("/api/business-hours", async (BusinessHoursCreateRequest request, HttpContext httpContext, AlicIADbContext db) =>
 {
+    var tenantId = GetTenantIdFromClaims(httpContext);
+    if (tenantId is null)
+        return Results.Unauthorized();
+
     if (string.IsNullOrWhiteSpace(request.StartTime) || string.IsNullOrWhiteSpace(request.EndTime))
     {
         return Results.BadRequest(new { error = "StartTime and EndTime are required as strings, e.g. '08:00:00'." });
@@ -426,7 +462,7 @@ app.MapPost("/business-hours", async (BusinessHoursCreateRequest request, AlicIA
         return Results.BadRequest(new { error = "StartTime must be before EndTime." });
     }
 
-    var tenantExists = await db.Tenants.AnyAsync(x => x.Id == request.TenantId);
+    var tenantExists = await db.Tenants.AnyAsync(x => x.Id == tenantId.Value);
     if (!tenantExists)
     {
         return Results.NotFound(new { error = "Tenant not found." });
@@ -434,7 +470,7 @@ app.MapPost("/business-hours", async (BusinessHoursCreateRequest request, AlicIA
 
     var businessHours = new BusinessHours
     {
-        TenantId = request.TenantId,
+        TenantId = tenantId.Value,
         DayOfWeek = request.DayOfWeek,
         StartTime = startTime,
         EndTime = endTime,
@@ -453,12 +489,16 @@ app.MapPost("/business-hours", async (BusinessHoursCreateRequest request, AlicIA
         EndTime = businessHours.EndTime.ToString(),
         IsActive = businessHours.IsActive
     });
-});
+}).RequireAuthorization();
 
-app.MapGet("/business-hours", async (Guid tenantId, AlicIADbContext db) =>
+app.MapGet("/api/business-hours", async (HttpContext httpContext, AlicIADbContext db) =>
 {
+    var tenantId = GetTenantIdFromClaims(httpContext);
+    if (tenantId is null)
+        return Results.Unauthorized();
+
     var hours = await db.BusinessHours
-        .Where(x => x.TenantId == tenantId && x.IsActive)
+        .Where(x => x.TenantId == tenantId.Value && x.IsActive)
         .OrderBy(x => x.DayOfWeek)
         .ThenBy(x => x.StartTime)
         .Select(x => new BusinessHoursResponse
@@ -473,16 +513,20 @@ app.MapGet("/business-hours", async (Guid tenantId, AlicIADbContext db) =>
         .ToListAsync();
 
     return Results.Ok(hours);
-});
+}).RequireAuthorization();
 
-app.MapGet("/availability/next-slots", async (
-    Guid tenantId,
+app.MapGet("/api/availability/next-slots", async (
     Guid serviceId,
+    HttpContext httpContext,
     AlicIADbContext db,
     DateTime? startDate = null,
     int days = 7,
     int maxSlots = 10) =>
 {
+    var tenantId = GetTenantIdFromClaims(httpContext);
+    if (tenantId is null)
+        return Results.Unauthorized();
+
     if (days <= 0)
     {
         return Results.BadRequest(new { error = "Days must be greater than zero." });
@@ -493,14 +537,14 @@ app.MapGet("/availability/next-slots", async (
         return Results.BadRequest(new { error = "MaxSlots must be greater than zero." });
     }
 
-    var service = await db.Services.FirstOrDefaultAsync(x => x.Id == serviceId && x.TenantId == tenantId);
+    var service = await db.Services.FirstOrDefaultAsync(x => x.Id == serviceId && x.TenantId == tenantId.Value);
     if (service is null)
     {
         return Results.NotFound(new { error = "Service not found for this tenant." });
     }
 
     var businessHours = await db.BusinessHours
-        .Where(x => x.TenantId == tenantId && x.IsActive)
+        .Where(x => x.TenantId == tenantId.Value && x.IsActive)
         .ToListAsync();
 
     if (!businessHours.Any())
@@ -510,7 +554,7 @@ app.MapGet("/availability/next-slots", async (
 
     var scheduledRequests = await db.Requests
         .Include(x => x.Service)
-        .Where(x => x.TenantId == tenantId && x.ScheduledAt != null && x.Status != RequestStatus.Cancelled)
+        .Where(x => x.TenantId == tenantId.Value && x.ScheduledAt != null && x.Status != RequestStatus.Cancelled)
         .ToListAsync();
 
     var windowStart = (startDate ?? DateTime.UtcNow).ToUniversalTime();
@@ -554,10 +598,14 @@ app.MapGet("/availability/next-slots", async (
     }
 
     return Results.Ok(results);
-});
+}).RequireAuthorization();
 
-app.MapGet("/oauth/google/start/{tenantId:guid}", (Guid tenantId, IConfiguration config) =>
+app.MapGet("/api/oauth/google/start", (HttpContext httpContext, IConfiguration config) =>
 {
+    var tenantId = GetTenantIdFromClaims(httpContext);
+    if (tenantId is null)
+        return Results.Unauthorized();
+
     var clientId = config["Google:ClientId"];
     var redirectUri = config["Google:RedirectUri"];
 
@@ -568,10 +616,10 @@ app.MapGet("/oauth/google/start/{tenantId:guid}", (Guid tenantId, IConfiguration
         $"&scope={Uri.EscapeDataString("https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email")}" +
         $"&access_type=offline" +
         $"&prompt=consent" +
-        $"&state={tenantId}";
+        $"&state={tenantId.Value}";
 
     return Results.Redirect(url);
-});
+}).RequireAuthorization();
 
 app.MapGet("/oauth/google/callback", async (
     string code,
@@ -682,14 +730,14 @@ app.MapGet("/oauth/google/callback", async (
     });
 });
 
-app.MapGet("/calendar-connections", async (Guid? tenantId, AlicIADbContext db) =>
+app.MapGet("/api/calendar-connections", async (HttpContext httpContext, AlicIADbContext db) =>
 {
-    var query = db.CalendarConnections.AsQueryable();
+    var tenantId = GetTenantIdFromClaims(httpContext);
+    if (tenantId is null)
+        return Results.Unauthorized();
 
-    if (tenantId.HasValue)
-        query = query.Where(x => x.TenantId == tenantId.Value);
-
-    var items = await query
+    var items = await db.CalendarConnections
+        .Where(x => x.TenantId == tenantId.Value)
         .OrderByDescending(x => x.ConnectedAt)
         .Select(x => new
         {
@@ -704,16 +752,20 @@ app.MapGet("/calendar-connections", async (Guid? tenantId, AlicIADbContext db) =
         .ToListAsync();
 
     return Results.Ok(items);
-});
+}).RequireAuthorization();
 
-app.MapGet("/google/busy-slots", async (
-    Guid tenantId,
+app.MapGet("/api/google/busy-slots", async (
+    HttpContext httpContext,
     GoogleCalendarService googleCalendarService,
     AlicIADbContext db,
     CancellationToken cancellationToken) =>
 {
+    var tenantId = GetTenantIdFromClaims(httpContext);
+    if (tenantId is null)
+        return Results.Unauthorized();
+
     var connection = await db.CalendarConnections
-        .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.Provider == "Google" && x.IsActive, cancellationToken);
+        .FirstOrDefaultAsync(x => x.TenantId == tenantId.Value && x.Provider == "Google" && x.IsActive, cancellationToken);
 
     if (connection is null)
         return Results.BadRequest(new { error = "Active Google Calendar connection not found for this tenant." });
@@ -729,35 +781,39 @@ app.MapGet("/google/busy-slots", async (
 
     return Results.Ok(new
     {
-        tenantId,
+        tenantId = tenantId.Value,
         calendarEmail = connection.CalendarEmail,
         timeMin,
         timeMax,
         busySlots
     });
-});
+}).RequireAuthorization();
 
-app.MapGet("/availability/google-next-slots", async (
-    Guid tenantId,
+app.MapGet("/api/availability/google-next-slots", async (
     Guid serviceId,
+    HttpContext httpContext,
     GoogleCalendarService googleCalendarService,
     AlicIADbContext db,
     CancellationToken cancellationToken) =>
 {
+    var tenantId = GetTenantIdFromClaims(httpContext);
+    if (tenantId is null)
+        return Results.Unauthorized();
+
     var service = await db.Services
-        .FirstOrDefaultAsync(x => x.Id == serviceId && x.TenantId == tenantId, cancellationToken);
+        .FirstOrDefaultAsync(x => x.Id == serviceId && x.TenantId == tenantId.Value, cancellationToken);
 
     if (service is null)
         return Results.BadRequest(new { error = "Service not found for this tenant." });
 
     var connection = await db.CalendarConnections
-        .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.Provider == "Google" && x.IsActive, cancellationToken);
+        .FirstOrDefaultAsync(x => x.TenantId == tenantId.Value && x.Provider == "Google" && x.IsActive, cancellationToken);
 
     if (connection is null)
         return Results.BadRequest(new { error = "Active Google Calendar connection not found for this tenant." });
 
     var businessHours = await db.BusinessHours
-        .Where(x => x.TenantId == tenantId && x.IsActive)
+        .Where(x => x.TenantId == tenantId.Value && x.IsActive)
         .ToListAsync(cancellationToken);
 
     if (!businessHours.Any())
@@ -774,7 +830,7 @@ app.MapGet("/availability/google-next-slots", async (
 
     var requestBusySlots = await db.Requests
         .Where(x =>
-            x.TenantId == tenantId &&
+            x.TenantId == tenantId.Value &&
             x.ScheduledAt != null &&
             x.Status != RequestStatus.Cancelled)
         .Join(
@@ -841,16 +897,130 @@ app.MapGet("/availability/google-next-slots", async (
 
     return Results.Ok(new
     {
-        tenantId,
+        tenantId = tenantId.Value,
         serviceId,
         serviceName = service.Name,
         durationMinutes = service.DurationMinutes,
         totalFound = nextSlots.Count,
         slots = nextSlots
     });
+}).RequireAuthorization();
+
+app.MapGet("/public/{tenantSlug}/services", async (string tenantSlug, AlicIADbContext db) =>
+{
+    var slug = NormalizeSlug(tenantSlug);
+    var tenant = await db.Tenants.FirstOrDefaultAsync(x => x.Slug == slug && x.Status == "Active");
+    if (tenant is null)
+        return Results.NotFound(new { error = "Tenant not found." });
+
+    var services = await db.Services
+        .Where(x => x.TenantId == tenant.Id)
+        .OrderBy(x => x.Name)
+        .Select(x => new
+        {
+            x.Id,
+            x.Name,
+            x.DurationMinutes,
+            x.Price
+        })
+        .ToListAsync();
+
+    return Results.Ok(services);
 });
 
-            app.MapPost("/bookings", async (
+app.MapGet("/public/{tenantSlug}/availability", async (
+    string tenantSlug,
+    Guid serviceId,
+    GoogleCalendarService googleCalendarService,
+    AlicIADbContext db,
+    CancellationToken cancellationToken,
+    DateTime? startDate = null,
+    int days = 7,
+    int maxSlots = 10) =>
+{
+    if (days <= 0)
+        return Results.BadRequest(new { error = "Days must be greater than zero." });
+
+    if (maxSlots <= 0)
+        return Results.BadRequest(new { error = "MaxSlots must be greater than zero." });
+
+    var slug = NormalizeSlug(tenantSlug);
+    var tenant = await db.Tenants.FirstOrDefaultAsync(x => x.Slug == slug && x.Status == "Active", cancellationToken);
+    if (tenant is null)
+        return Results.NotFound(new { error = "Tenant not found." });
+
+    var service = await db.Services.FirstOrDefaultAsync(x => x.Id == serviceId && x.TenantId == tenant.Id, cancellationToken);
+    if (service is null)
+        return Results.NotFound(new { error = "Service not found for this tenant." });
+
+    var businessHours = await db.BusinessHours
+        .Where(x => x.TenantId == tenant.Id && x.IsActive)
+        .ToListAsync(cancellationToken);
+
+    if (!businessHours.Any())
+        return Results.BadRequest(new { error = "No active business hours found for tenant." });
+
+    var scheduledRequests = await db.Requests
+        .Include(x => x.Service)
+        .Where(x => x.TenantId == tenant.Id && x.ScheduledAt != null && x.Status != RequestStatus.Cancelled)
+        .ToListAsync(cancellationToken);
+
+    var windowStart = (startDate ?? DateTime.UtcNow).ToUniversalTime();
+    var searchStartDate = windowStart.Date;
+    var windowEnd = searchStartDate.AddDays(days);
+    var duration = TimeSpan.FromMinutes(service.DurationMinutes);
+    var googleBusySlots = new List<BusySlot>();
+
+    var connection = await db.CalendarConnections
+        .FirstOrDefaultAsync(x => x.TenantId == tenant.Id && x.Provider == "Google" && x.IsActive, cancellationToken);
+
+    if (connection is not null)
+    {
+        googleBusySlots = await googleCalendarService.GetBusySlotsAsync(
+            connection,
+            windowStart,
+            windowEnd,
+            cancellationToken);
+    }
+
+    var results = new List<SlotResponse>();
+
+    for (var dayIndex = 0; dayIndex < days && results.Count < maxSlots; dayIndex++)
+    {
+        var currentDate = searchStartDate.AddDays(dayIndex);
+        var dayHours = businessHours.Where(x => x.DayOfWeek == currentDate.DayOfWeek).ToList();
+        if (!dayHours.Any())
+            continue;
+
+        foreach (var period in dayHours.OrderBy(x => x.StartTime))
+        {
+            var slotStart = currentDate.Add(period.StartTime);
+            if (dayIndex == 0 && slotStart < windowStart)
+                slotStart = windowStart;
+
+            var endBoundary = currentDate.Add(period.EndTime);
+            while (slotStart + duration <= endBoundary && results.Count < maxSlots)
+            {
+                var slotEnd = slotStart + duration;
+                var hasRequestConflict = IsSlotOccupied(slotStart, slotEnd, scheduledRequests);
+                var hasGoogleConflict = googleBusySlots.Any(x => BookingHelpers.Overlaps(slotStart, slotEnd, x.StartUtc, x.EndUtc));
+
+                if (!hasRequestConflict && !hasGoogleConflict)
+                    results.Add(new SlotResponse { Start = slotStart, End = slotEnd });
+
+                slotStart = slotStart.AddMinutes(15);
+            }
+
+            if (results.Count >= maxSlots)
+                break;
+        }
+    }
+
+    return Results.Ok(results);
+});
+
+app.MapPost("/public/{tenantSlug}/bookings", async (
+                string tenantSlug,
                 CreateBookingRequest request,
                 GoogleCalendarService googleCalendarService,
                 AlicIADbContext db,
@@ -862,11 +1032,12 @@ app.MapGet("/availability/google-next-slots", async (
                 if (string.IsNullOrWhiteSpace(request.CustomerPhone))
                     return Results.BadRequest(new { error = "CustomerPhone is required." });
 
-                var tenant = await db.Tenants.FirstOrDefaultAsync(x => x.Id == request.TenantId, cancellationToken);
+                var slug = NormalizeSlug(tenantSlug);
+                var tenant = await db.Tenants.FirstOrDefaultAsync(x => x.Slug == slug && x.Status == "Active", cancellationToken);
                 if (tenant is null)
                     return Results.BadRequest(new { error = "Tenant not found." });
 
-                var service = await db.Services.FirstOrDefaultAsync(x => x.Id == request.ServiceId && x.TenantId == request.TenantId, cancellationToken);
+                var service = await db.Services.FirstOrDefaultAsync(x => x.Id == request.ServiceId && x.TenantId == tenant.Id, cancellationToken);
                 if (service is null)
                     return Results.BadRequest(new { error = "Service not found for this tenant." });
 
@@ -874,7 +1045,7 @@ app.MapGet("/availability/google-next-slots", async (
                 var scheduledEndUtc = scheduledAtUtc.AddMinutes(service.DurationMinutes);
 
                 var businessHours = await db.BusinessHours
-                    .Where(x => x.TenantId == request.TenantId && x.IsActive && x.DayOfWeek == scheduledAtUtc.DayOfWeek)
+                    .Where(x => x.TenantId == tenant.Id && x.IsActive && x.DayOfWeek == scheduledAtUtc.DayOfWeek)
                     .ToListAsync(cancellationToken);
 
                 if (!businessHours.Any())
@@ -886,7 +1057,7 @@ app.MapGet("/availability/google-next-slots", async (
 
                 var existingRequests = await db.Requests
                     .Include(x => x.Service)
-                    .Where(x => x.TenantId == request.TenantId && x.ScheduledAt != null && x.Status != RequestStatus.Cancelled)
+                    .Where(x => x.TenantId == tenant.Id && x.ScheduledAt != null && x.Status != RequestStatus.Cancelled)
                     .ToListAsync(cancellationToken);
 
                 if (existingRequests.Any(x =>
@@ -896,7 +1067,7 @@ app.MapGet("/availability/google-next-slots", async (
                 }
 
                 var connection = await db.CalendarConnections
-                    .FirstOrDefaultAsync(x => x.TenantId == request.TenantId && x.Provider == "Google" && x.IsActive, cancellationToken);
+                    .FirstOrDefaultAsync(x => x.TenantId == tenant.Id && x.Provider == "Google" && x.IsActive, cancellationToken);
 
                 if (connection is null)
                     return Results.BadRequest(new { error = "Active Google Calendar connection not found for this tenant." });
@@ -909,13 +1080,13 @@ app.MapGet("/availability/google-next-slots", async (
 
                 var customerPhone = request.CustomerPhone.Trim();
                 var customer = await db.Customers
-                    .FirstOrDefaultAsync(x => x.TenantId == request.TenantId && x.Phone == customerPhone, cancellationToken);
+                    .FirstOrDefaultAsync(x => x.TenantId == tenant.Id && x.Phone == customerPhone, cancellationToken);
 
                 if (customer is null)
                 {
                     customer = new Customer
                     {
-                        TenantId = request.TenantId,
+                        TenantId = tenant.Id,
                         Name = request.CustomerName.Trim(),
                         Phone = customerPhone,
                         Email = request.CustomerEmail?.Trim()
@@ -927,7 +1098,7 @@ app.MapGet("/availability/google-next-slots", async (
 
                 var bookingRequest = new Request
                 {
-                    TenantId = request.TenantId,
+                    TenantId = tenant.Id,
                     CustomerId = customer.Id,
                     ServiceId = service.Id,
                     Type = RequestType.Booking,
@@ -1010,35 +1181,51 @@ static DateTime RoundUpToNextStep(DateTime value, int stepMinutes)
     return rounded.AddMinutes(stepMinutes - remainder);
 }
 
+static Guid? GetTenantIdFromClaims(HttpContext httpContext)
+{
+    var tenantIdClaim = httpContext.User.FindFirst("tenantId")?.Value;
+    return Guid.TryParse(tenantIdClaim, out var tenantId) ? tenantId : null;
+}
+
+static string NormalizeSlug(string value)
+{
+    var normalized = value.Trim().ToLowerInvariant();
+    normalized = Regex.Replace(normalized, @"[^a-z0-9]+", "-").Trim('-');
+    normalized = Regex.Replace(normalized, @"-+", "-");
+
+    return normalized.Length <= 120 ? normalized : normalized[..120].Trim('-');
+}
+
 public record CreateTenantRequest(
     string Name,
     string Segment,
     string Plan,
-    string Status
+    string Status,
+    string? Slug = null
 );
 
 public record CreateServiceRequest(
-    Guid TenantId,
     string Name,
     int DurationMinutes,
-    decimal Price
+    decimal Price,
+    Guid? TenantId = null
 );
 
 public record CreateCustomerRequest(
-    Guid TenantId,
     string Name,
     string Phone,
-    string? Email
+    string? Email,
+    Guid? TenantId = null
 );
 
 public record CreateRequestRequest(
-    Guid TenantId,
     Guid CustomerId,
     Guid ServiceId,
     RequestType Type,
     RequestStatus Status,
     DateTime? ScheduledAt,
-    decimal? TotalAmount
+    decimal? TotalAmount,
+    Guid? TenantId = null
 );
 
 public record AvailableSlot(DateTime StartUtc, DateTime EndUtc);

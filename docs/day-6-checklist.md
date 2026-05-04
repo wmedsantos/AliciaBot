@@ -37,16 +37,16 @@
 ## 📋 Remaining Tasks
 
 ### Public API Endpoints (Day 6+)
-- [ ] GET /public/{tenantSlug}/services - List services without authentication
-- [ ] GET /public/{tenantSlug}/availability - Get availability slots without authentication
-- [ ] POST /public/{tenantSlug}/bookings - Create booking without authentication
-- [ ] Implement tenant lookup by slug
+- [x] GET /public/{tenantSlug}/services - List services without authentication
+- [x] GET /public/{tenantSlug}/availability - Get availability slots without authentication
+- [x] POST /public/{tenantSlug}/bookings - Create booking without authentication
+- [x] Implement tenant lookup by slug
 
 ### Private API Protection
-- [ ] Add [Authorize] attribute to /api/* endpoints
-- [ ] Extract tenantId from JWT claims instead of request body
-- [ ] Update /api/services, /api/customers, /api/requests to use JWT tenantId
-- [ ] Validate tenant ownership for all operations
+- [x] Add [Authorize] attribute to /api/* endpoints
+- [x] Extract tenantId from JWT claims instead of request body
+- [x] Update /api/services, /api/customers, /api/requests to use JWT tenantId
+- [x] Validate tenant ownership for all operations
 
 ### Testing & Validation
 - [ ] Test signup endpoint
@@ -178,45 +178,45 @@ curl -X GET http://localhost:5000/api/me \
 - src/AlicIA.Infrastructure/Security/PasswordHasher.cs
 - src/AlicIA.Api/Models/AuthModels.cs
 
-- [ ] Return token
+- [x] Return token
 
 ---
 
 ## Middleware
 
-- [ ] Enable authentication middleware
-- [ ] Enable authorization middleware
-- [ ] Configure JWT validation
+- [x] Enable authentication middleware
+- [x] Enable authorization middleware
+- [x] Configure JWT validation
 
 ---
 
 ## Protect Private Endpoints
 
-- [ ] Add [Authorize] to private endpoints
-- [ ] Ensure tenantId is read from JWT claims
-- [ ] Remove tenantId trust from request body
+- [x] Add [Authorize] to private endpoints
+- [x] Ensure tenantId is read from JWT claims
+- [x] Remove tenantId trust from request body
 
 ---
 
 ## Public API Separation
 
-- [ ] Create /public route group
-- [ ] Move booking-related endpoints to public
-- [ ] Ensure no sensitive data is exposed
+- [x] Create /public route group
+- [x] Move booking-related endpoints to public
+- [x] Ensure no sensitive data is exposed
 
 ---
 
 ## Security Validation
 
-- [ ] Access private endpoint without token → must fail
-- [ ] Access private endpoint with token → must succeed
-- [ ] Token cannot be forged without backend secret
-- [ ] Frontend does not contain any secret
+- [x] Access private endpoint without token → must fail
+- [x] Access private endpoint with token → must succeed
+- [x] Token cannot be forged without backend secret
+- [x] Frontend does not contain any secret
 
 ---
 
 ## Docs and commit
 
-- [ ] Update README with Day 6 progress
+- [x] Update README with Day 6 progress
 - [ ] Commit changes
 - [ ] Push to GitHub

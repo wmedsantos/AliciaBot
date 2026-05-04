@@ -219,12 +219,19 @@ namespace AlicIA.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("Slug")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
 
                     b.ToTable("tenants", (string)null);
                 });
