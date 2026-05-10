@@ -52,12 +52,29 @@ AlicIA is a SaaS product designed to help small businesses automate customer int
 - ✅ Tenant isolation enforced through JWT claims
 - ✅ All security configuration externalized to appsettings
 
+## Day 7: MVP Backend Production Readiness
+- ✅ Implemented private booking cancel and reschedule endpoints
+- ✅ Added Google Calendar event update/delete support
+- ✅ Added token-based public customer cancel/reschedule flow
+- ✅ Production API is live behind HTTPS
+- ✅ Production configuration uses environment variables for secrets
+
 ## Tech Stack
 - **Backend**: ASP.NET Core 8.0
+- **Frontend**: Planned for Day 8+
 - **Database**: PostgreSQL (Neon)
 - **ORM**: Entity Framework Core 8.0
 - **Security**: JWT (HS256), PBKDF2-SHA256
 - **API Style**: REST with minimal abstractions
+
+## Repository Layout
+
+```
+AliciaBot/
+  backend/   # ASP.NET Core API, solution, migrations, backend env example, Postman collection
+  frontend/  # Reserved for the customer/admin frontend
+  docs/      # Product, planning, and implementation docs
+```
 
 ## Core Entities
 
@@ -120,9 +137,18 @@ Operating hours per day of week
 ### Requests
 - `POST /requests` - Create booking request
 - `GET /requests?tenantId={id}` - List requests
+- `POST /api/requests/{requestId}/cancel` - Cancel booking as authenticated tenant user
+- `POST /api/requests/{requestId}/reschedule` - Reschedule booking as authenticated tenant user
 
 ### Bookings
 - `POST /bookings` - Create booking with automatic sync to Google Calendar
+
+### Public Customer Booking
+- `GET /public/{tenantSlug}/services` - List customer-safe services
+- `GET /public/{tenantSlug}/availability?serviceId={id}` - List customer-safe availability
+- `POST /public/{tenantSlug}/bookings` - Create booking and return a confirmation token
+- `POST /public/bookings/{confirmationToken}/cancel` - Cancel booking as customer
+- `POST /public/bookings/{confirmationToken}/reschedule` - Reschedule booking as customer
 
 ### Business Hours
 - `POST /business-hours` - Set tenant operating hours
@@ -197,6 +223,8 @@ curl -X GET http://localhost:5000/api/me \
 ## Running Locally
 
 ```bash
+cd backend
+
 # Build
 dotnet build
 
@@ -211,19 +239,29 @@ dotnet run --project src/AlicIA.Api
 http://localhost:5000/swagger
 ```
 
+## Backend Docker
+
+```bash
+docker build -t alicia-backend ./backend
+docker run --rm -p 8080:8080 --env-file backend/.env.example alicia-backend
+```
+
+For Render Docker deploys, use `backend` as the root directory. The container listens on Render's `PORT` environment variable and falls back to `8080` locally.
+
 ## Architecture
 
 ```
-src/
-  AlicIA.Domain/          # Domain entities & enums
-    Entities/
-    Enums/
-  AlicIA.Infrastructure/  # Database & persistence
-    Persistence/Migrations/
-    Security/             # JWT & Password services
-    Integrations/         # Google Calendar integration
-  AlicIA.Api/             # REST API & endpoints
-    Models/
+backend/
+  src/
+    AlicIA.Domain/          # Domain entities & enums
+      Entities/
+      Enums/
+    AlicIA.Infrastructure/  # Database & persistence
+      Persistence/Migrations/
+      Security/             # JWT & Password services
+      Integrations/         # Google Calendar integration
+    AlicIA.Api/             # REST API & endpoints
+      Models/
 ```
 
 ## Database Schema
@@ -247,7 +285,8 @@ All tables support cascade deletes where appropriate and include UTC timestamps.
 
 ## Next Steps
 
-- Implement public API endpoints (/public/{slug}/services, /availability, /bookings)
+- Extract shared availability logic used across public availability, public booking, and reschedule flows
+- Add local Docker database for development
 - Add authorization policies for different roles
 - Implement refresh tokens
 - Add rate limiting to auth endpoints
@@ -256,4 +295,3 @@ All tables support cascade deletes where appropriate and include UTC timestamps.
 - WhatsApp integration
 - Implement notification system
 - Payment processing
-

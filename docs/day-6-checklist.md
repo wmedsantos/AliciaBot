@@ -163,20 +163,20 @@ curl -X GET http://localhost:5000/api/me \
 
 ## Files Modified
 
-- src/AlicIA.Api/Program.cs (JWT middleware, auth endpoints)
-- src/AlicIA.Api/appsettings.json (JWT configuration)
-- src/AlicIA.Api/appsettings.Development.json
-- src/AlicIA.Api/AlicIA.Api.csproj (JWT packages)
-- src/AlicIA.Infrastructure/AlicIA.Infrastructure.csproj
-- src/AlicIA.Infrastructure/AlicIADbContext.cs (User DbSet)
-- src/AlicIA.Infrastructure/Persistence/Migrations/
+- backend/src/AlicIA.Api/Program.cs (JWT middleware, auth endpoints)
+- backend/src/AlicIA.Api/appsettings.json (JWT configuration)
+- backend/src/AlicIA.Api/appsettings.Development.json
+- backend/src/AlicIA.Api/AlicIA.Api.csproj (JWT packages)
+- backend/src/AlicIA.Infrastructure/AlicIA.Infrastructure.csproj
+- backend/src/AlicIA.Infrastructure/AlicIADbContext.cs (User DbSet)
+- backend/src/AlicIA.Infrastructure/Persistence/Migrations/
 
 ## Files Created
 
-- src/AlicIA.Domain/Entities/User.cs
-- src/AlicIA.Infrastructure/Security/JwtAuthService.cs
-- src/AlicIA.Infrastructure/Security/PasswordHasher.cs
-- src/AlicIA.Api/Models/AuthModels.cs
+- backend/src/AlicIA.Domain/Entities/User.cs
+- backend/src/AlicIA.Infrastructure/Security/JwtAuthService.cs
+- backend/src/AlicIA.Infrastructure/Security/PasswordHasher.cs
+- backend/src/AlicIA.Api/Models/AuthModels.cs
 
 - [x] Return token
 

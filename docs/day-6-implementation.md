@@ -202,11 +202,11 @@ Response: `{ "id": "user-id", "email": "amanda@example.com", "tenantId": "...", 
 
 | File | Purpose |
 |------|---------|
-| `src/AlicIA.Domain/Entities/User.cs` | User domain entity |
-| `src/AlicIA.Infrastructure/Security/JwtAuthService.cs` | JWT token service |
-| `src/AlicIA.Infrastructure/Security/PasswordHasher.cs` | Password hashing service |
-| `src/AlicIA.Api/Models/AuthModels.cs` | Auth request/response models |
-| `src/AlicIA.Infrastructure/Persistence/Migrations/20260409120000_AddUserEntity.cs` | Database migration |
+| `backend/src/AlicIA.Domain/Entities/User.cs` | User domain entity |
+| `backend/src/AlicIA.Infrastructure/Security/JwtAuthService.cs` | JWT token service |
+| `backend/src/AlicIA.Infrastructure/Security/PasswordHasher.cs` | Password hashing service |
+| `backend/src/AlicIA.Api/Models/AuthModels.cs` | Auth request/response models |
+| `backend/src/AlicIA.Infrastructure/Persistence/Migrations/20260409120000_AddUserEntity.cs` | Database migration |
 
 ---
 
@@ -214,12 +214,12 @@ Response: `{ "id": "user-id", "email": "amanda@example.com", "tenantId": "...", 
 
 | File | Changes |
 |------|---------|
-| `src/AlicIA.Api/Program.cs` | Added JWT middleware, auth endpoints |
-| `src/AlicIA.Api/appsettings.json` | Added JWT configuration |
-| `src/AlicIA.Api/appsettings.Development.json` | Added JWT dev settings |
-| `src/AlicIA.Api/AlicIA.Api.csproj` | Added JWT NuGet packages |
-| `src/AlicIA.Infrastructure/AlicIADbContext.cs` | Added User DbSet and mapping |
-| `src/AlicIA.Infrastructure/AlicIA.Infrastructure.csproj` | Added JWT packages |
+| `backend/src/AlicIA.Api/Program.cs` | Added JWT middleware, auth endpoints |
+| `backend/src/AlicIA.Api/appsettings.json` | Added JWT configuration |
+| `backend/src/AlicIA.Api/appsettings.Development.json` | Added JWT dev settings |
+| `backend/src/AlicIA.Api/AlicIA.Api.csproj` | Added JWT NuGet packages |
+| `backend/src/AlicIA.Infrastructure/AlicIADbContext.cs` | Added User DbSet and mapping |
+| `backend/src/AlicIA.Infrastructure/AlicIA.Infrastructure.csproj` | Added JWT packages |
 | Migrations snapshot | Updated model snapshot |
 
 ---
@@ -338,10 +338,10 @@ POST /public/{tenantSlug}/bookings      - Create booking
 dotnet build
 
 # Apply migrations
-dotnet ef database update --project src/AlicIA.Infrastructure --startup-project src/AlicIA.Api
+dotnet ef database update --project backend/src/AlicIA.Infrastructure --startup-project backend/src/AlicIA.Api
 
 # Run API
-dotnet run --project src/AlicIA.Api
+dotnet run --project backend/src/AlicIA.Api
 
 # Test endpoints (see API Usage Examples above)
 ```
